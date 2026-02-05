@@ -1,0 +1,28 @@
+# Project: Polystore Retrieval System
+
+## Context
+This is an AI engineering project comparing vector, graph, and hybrid retrieval architectures across different data domains (Python docs + music metadata).
+
+## Code Standards
+- Use type hints on all functions
+- Follow Google-style docstrings
+- Format with Black (line length 100)
+- Keep functions focused and single-purpose
+- Use Pydantic for all data models
+- Abstract base classes for extensibility
+
+## Architecture Patterns
+- DataAdapter: transforms raw data → Documents (swappable domains)
+- MemoryStore: storage/retrieval backend (swappable implementations)
+- Query engine orchestrates adapter + store
+- Config-driven (YAML files for different setups)
+
+## When Helping Me
+1. Explain what we're building and why before showing code
+2. Show the pattern/structure first
+3. Let me implement
+4. Review and suggest improvements
+5. Keep focus on learning + portfolio quality
+
+## Current Phase
+Check commit history or ask me where we are in the week plan.

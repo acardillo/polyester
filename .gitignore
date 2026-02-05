@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Data
+data/raw/*
+data/processed/*
+data/indices/*
+!data/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
