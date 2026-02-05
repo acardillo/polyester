@@ -19,9 +19,9 @@ This is an AI engineering project comparing vector, graph, and hybrid retrieval 
 
 ## Work Style
 - Explain BEFORE showing code
-- Focus on a single task at a time (one file/class/function)
-- Show the pattern/structure first
-- Let me implement & wait for me to implement befor moving to the next piece
+- Focus on a single task at a time
+- Show the empty pattern/structure and let me fill it in. Define requirements in comments and explain them.
+- Let me implement & wait for me to implement before moving to the next piece
 - Review and suggest improvements
 - Review my code, don't rewrite it unless I ask
 
