@@ -17,12 +17,13 @@ This is an AI engineering project comparing vector, graph, and hybrid retrieval 
 - Query engine orchestrates adapter + store
 - Config-driven (YAML files for different setups)
 
-## When Helping Me
-1. Explain what we're building and why before showing code
-2. Show the pattern/structure first
-3. Let me implement
-4. Review and suggest improvements
-5. Keep focus on learning + portfolio quality
+## Work Style
+- Explain BEFORE showing code
+- Focus on a single task at a time (one file/class/function)
+- Show the pattern/structure first
+- Let me implement & wait for me to implement befor moving to the next piece
+- Review and suggest improvements
+- Review my code, don't rewrite it unless I ask
 
 ## Current Phase
-Check commit history or ask me where we are in the week plan.
+Check commit history or ask me where we are in the plan.
