@@ -20,13 +20,13 @@ class MemoryStore(ABC):
         pass
 
     @abstractmethod
-    def query(self, query_text: str, top_k: int = 5) -> list[Document]:
+    def query(self, query_text: str, n_results: int = 5) -> list[Document]:
         """
-        Query store and return top-k most relevant documents.
+        Query store and return the most relevant documents.
         
         Args:
             query_text: Natural language query string
-            top_k: Number of results to return (default: 5)
+            n_results: Number of results to return (default: 5)
             
         Returns:
             List of Document objects, ordered by relevance
