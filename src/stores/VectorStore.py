@@ -13,7 +13,7 @@ class VectorStore(MemoryStore):
 
     def _create_collection(self) -> None:
         """Create or recreate the ChromaDB collection."""
-        self.collection = self.client.create_collection(
+        self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
             embedding_function=self.embedding_fn
         )
