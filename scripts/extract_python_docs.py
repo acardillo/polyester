@@ -1,13 +1,13 @@
 """Extract Python stdlib documentation into structured format with relationships."""
 
 import sys
-import sysconfig
 import ast
 import inspect
 import importlib
 import json
 import pkgutil
 import textwrap
+import builtins
 from pathlib import Path
 from typing import Any, Optional
 from typing_extensions import TypeIs
@@ -15,7 +15,7 @@ from datetime import datetime
 
 OUTPUT_PATH = Path("data/python_docs.json")
 
-def get_function_calls(obj: Any) -> list[str]:
+def get_function_calls(obj: Any, module_name: str) -> list[str]:
         """
         Get function calls made within a function using AST.
         
@@ -30,26 +30,37 @@ def get_function_calls(obj: Any) -> list[str]:
             - Returns empty list on failure rather than crashing
         """
 
+        #  Get source and parse AST
         try:
             functionSourceCode = inspect.getsource(obj)
+            functionSourceCode = textwrap.dedent(functionSourceCode)
+            astTree = ast.parse(functionSourceCode)
         except Exception as e:
             print(f"Error getting source code for {obj}: {e}")
             return []
 
-        # Remove leading indentation before parsing
-        functionSourceCode = textwrap.dedent(functionSourceCode)
-
+        # Collect called functions from AST
         functionCalls = []
+        for node in ast.walk(astTree):
+            if isinstance(node, ast.Call):
+                functionName = None
+                if hasattr(node.func, 'id'):
+                    functionName = node.func.id
+
+                # Filter out built-in functions
+                if functionName and not hasattr(builtins, functionName):
+                    functionCalls.append(functionName)
+
+        # Validate function calls - only keep functions that exist in the module
         try:
-            astTree = ast.parse(functionSourceCode)
-            for node in ast.walk(astTree):
-                if isinstance(node, ast.Call):
-                    if hasattr(node.func, 'id'):
-                        functionCalls.append(node.func.id)
-                    elif hasattr(node.func, 'attr'):
-                        functionCalls.append(node.func.attr)
+            module = importlib.import_module(module_name)
+            module_functions = {
+                name for name, obj in inspect.getmembers(module)
+                if inspect.isfunction(obj) and obj.__module__ == module_name
+            }
+            functionCalls = [f for f in functionCalls if f in module_functions]
         except Exception as e:
-            # Parsing failed, return empty list
+            print(f"  Warning: Could not validate function calls for {module_name}: {e}")
             pass
 
         return functionCalls
@@ -67,6 +78,28 @@ def get_base_classes(obj: Any) -> list[str]:
 
     classMRO = inspect.getmro(obj)
     return [baseClass.__name__ for baseClass in classMRO[1:] if baseClass.__name__ != "object"]
+
+def get_base_class_module(obj: type, base_class_name: str) -> str:
+    """
+    Get the module name for a base class.
+    
+    Args:
+        obj: The class object being inspected
+        base_class_name: Name of the base class to find
+    
+    Returns:
+        Module name (defaults to "builtins" if not found)
+    """
+    try:
+        if hasattr(obj, '__bases__'):
+            for base in obj.__bases__:
+                if base.__name__ == base_class_name:
+                    return base.__module__
+    except Exception as e:
+        print(f"  Warning: Could not get base class module for {obj}: {e}")
+        pass
+    
+    return "builtins"  # Default assumption
 
 def inspect_callable(obj: Any, module_name: str, obj_name: str) -> Optional[dict]:
     """
@@ -118,7 +151,7 @@ def inspect_callable(obj: Any, module_name: str, obj_name: str) -> Optional[dict
 
     relationships = []
     if isFunction:
-        functionCalls = get_function_calls(obj)
+        functionCalls = get_function_calls(obj, module_name)
         for functionCall in functionCalls:
             relationships.append({
                 "target": f"stdlib.{module_name}.{functionCall}",
@@ -128,8 +161,9 @@ def inspect_callable(obj: Any, module_name: str, obj_name: str) -> Optional[dict
     if isClass:
         baseClasses = get_base_classes(obj)
         for baseClass in baseClasses:
+            baseClassModule = get_base_class_module(obj, baseClass)
             relationships.append({
-                "target": f"{baseClass}",
+                "target": f"stdlib.{baseClassModule}.{baseClass}",
                 "type": "base_class"
             })
 
@@ -165,6 +199,11 @@ def inspect_module(module_name: str) -> list[dict]:
         return []
 
     callable_members = inspect.getmembers(module, isFunctionOrClass)
+    callable_members = [
+        (name, obj) for name, obj in callable_members
+        if getattr(obj, '__module__', None) == module_name
+    ]
+
     callable_data = [inspect_callable(member[1], module_name, member[0]) for member in callable_members]
     callable_data = [data for data in callable_data if data is not None]
 
@@ -180,10 +219,12 @@ def main() -> None:
     print(f"\nExtracting Python stdlib documentation...")
     now = datetime.now()
 
+    stdlib_modules = sys.stdlib_module_names  # Python 3.10+
+
     all_modules = sorted([
         m.name 
         for m in pkgutil.iter_modules()
-        if m.module_finder.path == sysconfig.get_path('stdlib') 
+        if m.name in stdlib_modules
         and not m.name.startswith("_")
     ])
 
