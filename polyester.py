@@ -12,7 +12,7 @@ from rich.table import Table
 from pathlib import Path
 
 from src.adapters import PythonDocsAdapter
-from src.stores import VectorStore
+from src.stores import VectorStore, GraphStore
 
 # Suppress ALL non-critical warnings
 warnings.filterwarnings("ignore")
@@ -47,13 +47,7 @@ def query(
     console.print(f"[green]✓[/green] Loaded {len(docs)} documents")
     
     # Create and index store
-    console.print(f"[bold blue]Indexing documents in {store_type} store...[/bold blue]")
-    if store_type == "vector":
-        store = VectorStore(collection_name="python_docs_cli")
-    else:
-        console.print(f"[red]Error: Store type '{store_type}' not yet implemented[/red]")
-        raise typer.Exit(code=1)
-    
+    store = create_store(store_type)
     store.index(docs)
     console.print(f"[green]✓[/green] Indexed {store.size()} documents")
     
@@ -101,12 +95,7 @@ def index(
     console.print(f"[green]✓[/green] Loaded {len(docs)} documents")
     
     # Create store
-    console.print(f"[bold blue]Indexing documents in {store_type} store...[/bold blue]")
-    if store_type == "vector":
-        store = VectorStore(collection_name="python_docs_cli")
-    else:
-        console.print(f"[red]Error: Store type '{store_type}' not yet implemented[/red]")
-        raise typer.Exit(code=1)
+    store = create_store(store_type)
     
     # Index documents
     with console.status("[bold green]Generating embeddings..."):
@@ -150,6 +139,16 @@ def info(
     
     console.print(table)
 
+def create_store(store_type: str):
+    """Factory function to create store by type."""
+    if store_type == "vector":
+        return VectorStore(collection_name="python_docs_cli")
+    elif store_type == "graph":
+        return GraphStore()
+    else:
+        console.print(f"[red]Error: Store type '{store_type}' not implemented[/red]")
+        console.print(f"[yellow]Available: vector, graph[/yellow]")
+        raise typer.Exit(code=1)
 
 if __name__ == "__main__":
     app()
