@@ -1,5 +1,5 @@
 from .base import MemoryStore
-from .VectorStore import VectorStore
+from .vector_store import VectorStore
 from .graph_store import GraphStore
 
 __all__ = ["MemoryStore", "VectorStore", "GraphStore"]
