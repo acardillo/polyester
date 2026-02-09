@@ -112,11 +112,12 @@ class GraphStore(MemoryStore):
     def _add_edges(self, relationships: list[Relationship]) -> None:
         """Add edges for all relationships of a document."""
         for relationship in relationships:
-            self.graph.add_edge(
-                relationship.source_id,
-                relationship.target_id,
-                type=relationship.relationship_type
-            )
+            if relationship.source_id in self.graph and relationship.target_id in self.graph:
+                self.graph.add_edge(
+                    relationship.source_id,
+                    relationship.target_id,
+                    type=relationship.relationship_type
+                )
     
     def _index_document(self, doc: Document) -> None:
         """Add document to inverted index."""
