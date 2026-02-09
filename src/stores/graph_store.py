@@ -22,6 +22,7 @@ class GraphStore(MemoryStore):
             **kwargs: Additional configuration (unused currently)
         """
         self.graph = nx.DiGraph()
+        self.inverted_index = {}
     
     def index(self, documents: list[Document]) -> None:
         """
@@ -35,8 +36,11 @@ class GraphStore(MemoryStore):
 
         for doc in documents:
             self._add_node(doc)
-            self._add_edges(doc.relationships)
             self._index_document(doc)
+
+        # Add edges for all relationships (second pass ensures all nodes are accounted for)
+        for doc in documents:
+            self._add_edges(doc.relationships)
 
     
     def query(self, query_text: str, n_results: int = 5) -> list[Document]:
