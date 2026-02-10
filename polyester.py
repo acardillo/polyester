@@ -12,7 +12,7 @@ from rich.table import Table
 from pathlib import Path
 
 from src.adapters import PythonDocsAdapter
-from src.stores import VectorStore, GraphStore
+from src.stores import VectorStore, GraphStore, BM25Store
 
 # Suppress ALL non-critical warnings
 warnings.filterwarnings("ignore")
@@ -145,6 +145,8 @@ def create_store(store_type: str):
         return VectorStore(collection_name="python_docs_cli")
     elif store_type == "graph":
         return GraphStore()
+    elif store_type == "bm25":
+        return BM25Store()
     else:
         console.print(f"[red]Error: Store type '{store_type}' not implemented[/red]")
         console.print(f"[yellow]Available: vector, graph[/yellow]")
