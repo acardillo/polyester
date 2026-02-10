@@ -420,3 +420,243 @@ class TestGraphStore:
         assert neighbors1[0].id == "func2"
         assert len(neighbors2) == 1
         assert neighbors2[0].id == "func1"
+
+class TestBM25Store:
+    """Tests for BM25Store."""
+    
+    @pytest.fixture
+    def sample_documents(self):
+        """Create sample documents for testing BM25 keyword matching."""
+        return [
+            Document(
+                id="json.load",
+                content="Load JSON data from a file and parse it into Python objects",
+                metadata={"module": "json", "type": "function"}
+            ),
+            Document(
+                id="json.dump",
+                content="Serialize Python objects to JSON format and write to file",
+                metadata={"module": "json", "type": "function"}
+            ),
+            Document(
+                id="pickle.load",
+                content="Load Python objects from a pickle file using deserialization",
+                metadata={"module": "pickle", "type": "function"}
+            ),
+            Document(
+                id="csv.reader",
+                content="Read CSV data from a file line by line",
+                metadata={"module": "csv", "type": "function"}
+            ),
+            Document(
+                id="yaml.safe_load",
+                content="Safely parse YAML documents into Python data structures",
+                metadata={"module": "yaml", "type": "function"}
+            )
+        ]
+    
+    @pytest.fixture
+    def bm25_store(self):
+        """Create a BM25Store instance."""
+        from src.stores import BM25Store
+        return BM25Store()
+    
+    # === INITIALIZATION TESTS ===
+    
+    def test_init(self, bm25_store):
+        """Test BM25Store initialization."""
+        assert bm25_store.size() == 0
+        assert bm25_store.bm25_index is None
+        assert bm25_store.documents == []
+    
+    # === INDEXING TESTS ===
+    
+    def test_index_documents(self, bm25_store, sample_documents):
+        """Test indexing documents."""
+        bm25_store.index(sample_documents)
+        assert bm25_store.size() == 5
+        assert bm25_store.bm25_index is not None
+    
+    def test_reindex_replaces_data(self, bm25_store, sample_documents):
+        """Test that re-indexing replaces old data."""
+        bm25_store.index(sample_documents)
+        assert bm25_store.size() == 5
+        
+        # Re-index with just one document
+        bm25_store.index([sample_documents[0]])
+        assert bm25_store.size() == 1
+    
+    # === QUERY TESTS ===
+    
+    def test_query_exact_keyword_match(self, bm25_store, sample_documents):
+        """Test querying with exact keyword matching."""
+        bm25_store.index(sample_documents)
+        
+        # Query for "JSON" should rank JSON documents highest
+        results = bm25_store.query("JSON", n_results=3)
+        
+        assert len(results) > 0
+        # json.load or json.dump should be first (both have "JSON")
+        assert results[0].id in ["json.load", "json.dump"]
+    
+    def test_query_multiple_keywords(self, bm25_store, sample_documents):
+        """Test querying with multiple keywords."""
+        bm25_store.index(sample_documents)
+        
+        # Query for "load file" should rank documents with both words higher
+        results = bm25_store.query("load file", n_results=5)
+        
+        assert len(results) > 0
+        # Documents with both "load" and "file" should rank higher
+        top_ids = [doc.id for doc in results[:2]]
+        # json.load, pickle.load, or csv.reader likely at top
+        assert any("load" in doc_id or "reader" in doc_id for doc_id in top_ids)
+    
+    def test_query_case_insensitive(self, bm25_store, sample_documents):
+        """Test that queries are case-insensitive."""
+        bm25_store.index(sample_documents)
+        
+        results_lower = bm25_store.query("json", n_results=2)
+        results_upper = bm25_store.query("JSON", n_results=2)
+        results_mixed = bm25_store.query("Json", n_results=2)
+        
+        # All should return same results
+        assert [doc.id for doc in results_lower] == [doc.id for doc in results_upper]
+        assert [doc.id for doc in results_lower] == [doc.id for doc in results_mixed]
+    
+    def test_query_respects_n_results(self, bm25_store, sample_documents):
+        """Test that n_results parameter limits results."""
+        bm25_store.index(sample_documents)
+        
+        results_1 = bm25_store.query("load", n_results=1)
+        assert len(results_1) == 1
+        
+        results_3 = bm25_store.query("load", n_results=3)
+        assert len(results_3) == 3
+        
+        results_all = bm25_store.query("load", n_results=10)
+        assert len(results_all) == 5  # Only 5 docs total
+    
+    def test_query_returns_document_objects(self, bm25_store, sample_documents):
+        """Test that query returns proper Document objects."""
+        bm25_store.index(sample_documents)
+        
+        results = bm25_store.query("file", n_results=2)
+        
+        for doc in results:
+            assert isinstance(doc, Document)
+            assert doc.id
+            assert doc.content
+            assert isinstance(doc.metadata, dict)
+    
+    def test_query_ranks_by_relevance(self, bm25_store, sample_documents):
+        """Test that BM25 ranks documents by relevance."""
+        bm25_store.index(sample_documents)
+        
+        # Query for "JSON file" - json.load has both words prominently
+        results = bm25_store.query("JSON file", n_results=5)
+        
+        # json.load or json.dump should be first (both have "JSON" and "file")
+        assert results[0].id in ["json.load", "json.dump"]
+    
+    def test_query_no_matches(self, bm25_store, sample_documents):
+        """Test query with no matching keywords."""
+        bm25_store.index(sample_documents)
+        
+        # Query for term not in any document
+        results = bm25_store.query("tensorflow machine learning", n_results=5)
+        
+        # Should still return documents (lowest BM25 scores)
+        assert len(results) == 5
+    
+    # === CLEAR & SIZE TESTS ===
+    
+    def test_clear_removes_all_data(self, bm25_store, sample_documents):
+        """Test that clear() removes all indexed documents."""
+        bm25_store.index(sample_documents)
+        assert bm25_store.size() == 5
+        
+        bm25_store.clear()
+        
+        assert bm25_store.size() == 0
+        assert bm25_store.bm25_index is None
+        assert bm25_store.documents == []
+    
+    def test_clear_allows_reindexing(self, bm25_store, sample_documents):
+        """Test that documents can be reindexed after clear()."""
+        bm25_store.index(sample_documents)
+        bm25_store.clear()
+        bm25_store.index(sample_documents[:2])  # Index just two docs
+        
+        assert bm25_store.size() == 2
+    
+    def test_size_empty_store(self, bm25_store):
+        """Test size() on empty store."""
+        assert bm25_store.size() == 0
+    
+    def test_size_after_indexing(self, bm25_store, sample_documents):
+        """Test size() returns correct doc count."""
+        bm25_store.index(sample_documents)
+        assert bm25_store.size() == len(sample_documents)
+    
+    # === EDGE CASE TESTS ===
+    
+    def test_query_empty_store(self, bm25_store):
+        """Test querying empty store returns empty list."""
+        results = bm25_store.query("test query", n_results=5)
+        assert results == []
+    
+    def test_query_empty_string(self, bm25_store, sample_documents):
+        """Test query with empty string."""
+        bm25_store.index(sample_documents)
+        
+        results = bm25_store.query("", n_results=5)
+        
+        # Should return documents (BM25 will give scores even for empty query)
+        assert len(results) <= 5
+    
+    def test_query_single_document(self, bm25_store, sample_documents):
+        """Test query with only one document indexed."""
+        bm25_store.index([sample_documents[0]])
+        
+        results = bm25_store.query("JSON", n_results=5)
+        
+        assert len(results) == 1
+        assert results[0].id == "json.load"
+    
+    def test_documents_with_special_characters(self, bm25_store):
+        """Test indexing documents with special characters."""
+        docs = [
+            Document(
+                id="doc1",
+                content="This has special chars: @#$% and numbers 123",
+                metadata={}
+            ),
+            Document(
+                id="doc2",
+                content="Normal text without special characters",
+                metadata={}
+            )
+        ]
+        
+        bm25_store.index(docs)
+        results = bm25_store.query("special chars", n_results=2)
+        
+        # Should find doc1
+        assert len(results) >= 1
+        assert results[0].id == "doc1"
+    
+    def test_tokenization_consistency(self, bm25_store):
+        """Test that query and index use same tokenization."""
+        docs = [
+            Document(id="1", content="Python programming language", metadata={}),
+            Document(id="2", content="Java programming language", metadata={})
+        ]
+        
+        bm25_store.index(docs)
+        
+        # Query should use same tokenization (lowercase, split)
+        results = bm25_store.query("Python Programming", n_results=1)
+        
+        assert len(results) == 1
+        assert results[0].id == "1"
