@@ -83,11 +83,11 @@ To run the Polyester CLI: `python polyester.py <command> [options]`
 
 ### Options
 
-| Option    | Shorthand | Values                                                | Default                 | Description              |
-| --------- | --------- | ----------------------------------------------------- | ----------------------- | ------------------------ |
-| `--store` | `-s`      | `vector` &#124; `graph` &#124; `bm25` &#124; `hybrid` | `vector`                | Store type               |
-| `--data`  | `-d`      | File Path                                             | `data/python_docs.json` | Path to JSON data        |
-| `--top-k` | `-k`      | Integer                                               | `5`                     | # of result (query only) |
+| Option  | Short | Values                                                | Default                 | Description                    |
+| ------- | ----- | ----------------------------------------------------- | ----------------------- | ------------------------------ |
+| `store` | `s`   | `vector` &#124; `graph` &#124; `bm25` &#124; `hybrid` | `vector`                | Store type                     |
+| `data`  | `d`   | File Path                                             | `data/python_docs.json` | Path to JSON data              |
+| `top-k` | `k`   | Integer                                               | `5`                     | Number of results (query only) |
 
 ## Project Structure
 
