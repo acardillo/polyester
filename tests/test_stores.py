@@ -1,7 +1,7 @@
 """Unit tests for memory stores."""
 
 import pytest
-from src.stores import MemoryStore, VectorStore, GraphStore
+from src.stores import MemoryStore, VectorStore, GraphStore, BM25Store, HybridStore
 from src.core import Document, Relationship
 
 
@@ -187,8 +187,9 @@ class TestGraphStore:
     @pytest.fixture
     def graph_store(self):
         """Create a GraphStore instance."""
-        from src.stores import GraphStore
-        return GraphStore()
+        store = GraphStore()
+        yield store
+        store.clear()
     
     # === INITIALIZATION TESTS ===
     
@@ -458,8 +459,9 @@ class TestBM25Store:
     @pytest.fixture
     def bm25_store(self):
         """Create a BM25Store instance."""
-        from src.stores import BM25Store
-        return BM25Store()
+        store = BM25Store()
+        yield store
+        store.clear()
     
     # === INITIALIZATION TESTS ===
     
@@ -660,3 +662,148 @@ class TestBM25Store:
         
         assert len(results) == 1
         assert results[0].id == "1"
+
+class TestHybridStore:
+    """Tests for HybridStore (vector + graph + BM25 with weighted RRF)."""
+
+    @pytest.fixture
+    def sample_documents(self):
+        """Documents with content for all three stores."""
+        return [
+            Document(
+                id="json.load",
+                content="Load JSON data from a file and parse it into Python objects",
+                metadata={"module": "json", "type": "function"},
+                relationships=[
+                    Relationship(
+                        source_id="json.load",
+                        target_id="json.loads",
+                        relationship_type="calls",
+                        metadata={},
+                    )
+                ],
+            ),
+            Document(
+                id="json.loads",
+                content="Parse JSON string into Python object",
+                metadata={"module": "json", "type": "function"},
+                relationships=[],
+            ),
+            Document(
+                id="json.dump",
+                content="Serialize Python objects to JSON format and write to file",
+                metadata={"module": "json", "type": "function"},
+                relationships=[],
+            ),
+        ]
+
+    @pytest.fixture
+    def hybrid_store(self):
+        """HybridStore with unique collection for isolation."""
+        store = HybridStore(collection_name="test_hybrid_collection")
+        yield store
+        store.clear()
+
+    # === INITIALIZATION ===
+
+    def test_init_default_weights(self):
+        """Default weights sum to 1.0 and sub-stores exist."""
+        store = HybridStore()
+        assert store.vector_weight + store.graph_weight + store.bm25_weight == pytest.approx(1.0)
+        assert store.vector_store is not None
+        assert store.graph_store is not None
+        assert store.bm25_store is not None
+        store.clear()
+
+    def test_init_custom_weights_and_collection(self):
+        """Custom weights and collection_name are stored."""
+        store = HybridStore(
+            collection_name="my_hybrid",
+            vector_weight=0.5,
+            graph_weight=0.3,
+            bm25_weight=0.2,
+        )
+        assert store.vector_weight == 0.5
+        assert store.graph_weight == 0.3
+        assert store.bm25_weight == 0.2
+        assert store.vector_store.collection_name == "my_hybrid"
+        store.clear()
+
+    def test_init_weights_must_sum_to_one(self):
+        """Weights that do not sum to 1.0 raise ValueError."""
+        with pytest.raises(ValueError, match="sum to 1.0"):
+            HybridStore(vector_weight=0.5, graph_weight=0.5, bm25_weight=0.5)
+        with pytest.raises(ValueError, match="sum to 1.0"):
+            HybridStore(vector_weight=1.0, graph_weight=0.5, bm25_weight=0.5)
+
+    # === INDEXING ===
+
+    def test_index_documents(self, hybrid_store, sample_documents):
+        """Indexing updates size and all sub-stores."""
+        hybrid_store.index(sample_documents)
+        assert hybrid_store.size() == 3
+        assert hybrid_store.vector_store.size() == 3
+        assert hybrid_store.graph_store.size() == 3
+        assert hybrid_store.bm25_store.size() == 3
+
+    # === QUERY ===
+
+    def test_query_returns_documents(self, hybrid_store, sample_documents):
+        """Query returns list of Document objects."""
+        hybrid_store.index(sample_documents)
+        results = hybrid_store.query("JSON", n_results=2)
+        assert len(results) <= 2
+        assert all(isinstance(doc, Document) for doc in results)
+
+    def test_query_respects_n_results(self, hybrid_store, sample_documents):
+        """Query length is at most n_results."""
+        hybrid_store.index(sample_documents)
+        assert len(hybrid_store.query("json", n_results=1)) == 1
+        assert len(hybrid_store.query("json", n_results=2)) == 2
+        assert len(hybrid_store.query("json", n_results=10)) == 3
+
+    def test_query_default_n_results(self, hybrid_store, sample_documents):
+        """Calling query without n_results uses default 5."""
+        hybrid_store.index(sample_documents)
+        results = hybrid_store.query("json")
+        assert len(results) <= 5
+        assert len(results) == 3
+
+    def test_query_no_duplicate_ids(self, hybrid_store, sample_documents):
+        """Each result appears at most once."""
+        hybrid_store.index(sample_documents)
+        results = hybrid_store.query("json load", n_results=5)
+        ids = [doc.id for doc in results]
+        assert len(ids) == len(set(ids))
+
+    def test_query_empty_store(self, hybrid_store):
+        """Query on empty store returns empty list."""
+        assert hybrid_store.query("anything", n_results=5) == []
+
+    # === CLEAR & SIZE ===
+
+    def test_clear_removes_all(self, hybrid_store, sample_documents):
+        """clear() resets all sub-stores."""
+        hybrid_store.index(sample_documents)
+        assert hybrid_store.size() == 3
+        hybrid_store.clear()
+        assert hybrid_store.size() == 0
+        assert hybrid_store.vector_store.size() == 0
+        assert hybrid_store.graph_store.size() == 0
+        assert hybrid_store.bm25_store.size() == 0
+
+    def test_size_empty_store(self, hybrid_store):
+        """Empty store has size 0."""
+        assert hybrid_store.size() == 0
+
+    def test_size_after_indexing(self, hybrid_store, sample_documents):
+        """size() equals number of indexed documents."""
+        hybrid_store.index(sample_documents)
+        assert hybrid_store.size() == len(sample_documents)
+
+    def test_clear_allows_reindex(self, hybrid_store, sample_documents):
+        """After clear, new index works."""
+        hybrid_store.index(sample_documents)
+        hybrid_store.clear()
+        hybrid_store.index(sample_documents[:1])
+        assert hybrid_store.size() == 1
