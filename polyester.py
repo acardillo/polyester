@@ -12,7 +12,7 @@ from rich.table import Table
 from pathlib import Path
 
 from src.adapters import PythonDocsAdapter
-from src.stores import VectorStore, GraphStore, BM25Store
+from src.stores import VectorStore, GraphStore, BM25Store, HybridStore
 
 # Suppress ALL non-critical warnings
 warnings.filterwarnings("ignore")
@@ -147,10 +147,12 @@ def create_store(store_type: str):
         return GraphStore()
     elif store_type == "bm25":
         return BM25Store()
+    elif store_type == "hybrid":
+        return HybridStore(collection_name="python_docs_cli")
     else:
         console.print(f"[red]Error: Store type '{store_type}' not implemented[/red]")
         console.print(f"[yellow]Available: vector, graph[/yellow]")
         raise typer.Exit(code=1)
 
 if __name__ == "__main__":
-    app()
+    app() 
