@@ -2,60 +2,46 @@
 
 **Polystore AI Retrieval System** — A comparative study of AI memory architectures: vector, graph, BM25, and hybrid retrieval over structured documentation (e.g. Python stdlib).
 
----
-
 ## Prerequisites
 
 - **Python 3.10+** (3.12 recommended)
-- ~2GB free disk for embedding models on first run (sentence-transformers)
-
----
+- ~2GB free disk for embedding models on first run
 
 ## Quick start
 
-### 1. Clone and set up
+### 1. Setup Virtual Environment & Install Dependencies
 
 ```bash
-git clone <your-repo-url>
-cd polyester
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Data
+### 2. Create a Data Source
 
-Use the included Python stdlib docs, or regenerate them:
+Use the included Python stdlib docs, or optionally regenerate them using:
 
 ```bash
-# Optional: regenerate Python stdlib docs (takes a few minutes)
 python scripts/extract_python_docs.py
 ```
 
-Output: `data/python_docs.json` (created by the script or already in the repo).
+### 3. Run the Polyester CLI
 
-### 3. Run the CLI
-
-**Query** (default: vector store, 5 results):
+A full list of CLI options is available in the [CLI options section](#cli-options) below. Here are some sample commands to get you started:
 
 ```bash
+# Default Query - Top 5 results using Vector Store
 python polyester.py query "JSON parsing"
+
+# Custom Query Options - Top 3 results using Graph Store
 python polyester.py query "file I/O" --store hybrid --top-k 3
-```
 
-**Index** (build in-memory index):
-
-```bash
+# Index - Creates a vector store from the default data source
 python polyester.py index --data data/python_docs.json --store vector
-```
 
-**Info** (dataset and store summary):
-
-```bash
+# Info - Provides metrics about the hybrid store
 python polyester.py info --data data/python_docs.json --store hybrid
 ```
-
----
 
 ## Retrieval systems
 
@@ -63,54 +49,47 @@ Each store implements the same interface (`index`, `query`, `clear`, `size`) but
 
 ### Vector store
 
-**Semantic search.** Documents and the query are turned into embeddings (sentence-transformers); retrieval is by cosine similarity in vector space. Best when the query is conceptual and wording differs from the docs (e.g. “parse JSON” matching “deserialize a JSON string”). Uses ChromaDB and the `all-MiniLM-L6-v2` model.
+**Semantic search.** Documents and queries are turned into embeddings using ChromaDB's sentence Transformers. Cosine similiarity between vectors is used for ranking.
+
+This store is best used when the query is conceptual differs semantically from the docs. For example, “parse JSON” could match “deserialize a JSON string”
 
 ### Graph store
 
-**Structure + keyword.** Documents are nodes; relationships (e.g. “calls”, “inherits”) are edges. Retrieval uses exact ID match, a simple keyword index over content, and neighbor expansion. Best for “what does X call?” or “what inherits from X?”. Uses NetworkX. Does not use embeddings.
+**Structure + keyword.** Data is expressed as a structured graph (NetworkX) where documents are nodes and relationships are edges. Retrieval uses an inverted index to find key word matches, and neighbor expansion to find related documents.
+
+This store is best for queries that require relational context. For example, “what does X call?” or “what inherits from X?”.
 
 ### BM25 store
 
-**Keyword ranking.** Classic IR: documents are tokenized; retrieval uses the BM25 formula (term frequency, inverse document frequency, length normalization). Best for exact or strong term overlap (e.g. “JSON load”). Pure keyword, no embeddings or graph. Uses the `rank_bm25` library.
+**Keyword ranking.** Matches documents directly from keywords using a well-defined ranking function (BM25). Documents are tokenized and term frequency, inverse document frequency, and length normalization measure similarity.
+
+This store is best for exact or strong term overlap. For example "JSON load".
 
 ### Hybrid store
 
-**Fusion of all three.** Runs vector, graph, and BM25 in parallel, then merges their ranked lists with **weighted Reciprocal Rank Fusion (RRF)**. Default weights: vector 0.4, graph 0.3, BM25 0.3. Good when you want both semantic match and structural/keyword signal. Single `query()` call; no separate “strategy” options.
+**Fusion of all three.** Runs vector, graph, and BM25 in parallel, then merges their ranked lists with **weighted Reciprocal Rank Fusion (RRF)**.
 
----
+## Polyester CLI
 
-## Store types (CLI)
+To run the Polyester CLI: `python polyester.py <command> [options]`
 
-| Store   | CLI value | Description |
-|--------|-----------|-------------|
-| Vector | `vector`  | Semantic search (ChromaDB + embeddings). |
-| Graph  | `graph`   | Relationship traversal + keyword (NetworkX). |
-| BM25   | `bm25`    | Keyword ranking (BM25). |
-| Hybrid | `hybrid`  | Vector + graph + BM25 with weighted RRF. |
+### Commands
 
-Use `--store` / `-s`: e.g. `--store hybrid`.
+| Command | Syntax                                       | Description                                                           |
+| ------- | -------------------------------------------- | --------------------------------------------------------------------- |
+| `query` | `python polyester.py query "Text" [options]` | Search the indexed data for relevant results matching the input text. |
+| `index` | `python polyester.py index [options]`        | Load data and index it into the chosen store (in-memory only).        |
+| `info`  | `python polyester.py info [options]`         | Display metrics and information about the indexed dataset and store.  |
 
----
+### Options
 
-## CLI options
+| Option    | Shorthand | Values                                                | Default                 | Description                    |
+| --------- | --------- | ----------------------------------------------------- | ----------------------- | ------------------------------ |
+| `--store` | `-s`      | `vector` &#124; `graph` &#124; `bm25` &#124; `hybrid` | `vector`                | Store type                     |
+| `--data`  | `-d`      | Path to JSON data                                     | `data/python_docs.json` | Path to JSON data              |
+| `--top-k` | `-k`      | Integer                                               | `5`                     | Number of results (query only) |
 
-**query** `TEXT` — Run a search.
-
-- `--store`, `-s` — `vector` \| `graph` \| `bm25` \| `hybrid` (default: `vector`).
-- `--top-k`, `-k` — Number of results (default: 5).
-- `--data`, `-d` — Path to JSON data (default: `data/python_docs.json`).
-
-**index** — Load data and index into the chosen store (in-memory).
-
-- `--store`, `--data` — Same as above.
-
-**info** — Show document count, modules, and store type.
-
-- `--store`, `--data` — Same as above.
-
----
-
-## Project layout
+## Project Structure
 
 ```
 polyester/
@@ -121,29 +100,8 @@ polyester/
 ├── scripts/
 │   └── extract_python_docs.py
 ├── src/
-│   ├── adapters/         # Data loaders (e.g. PythonDocsAdapter)
-│   ├── core/             # Document, Relationship models
+│   ├── adapters/         # PythonDocsAdapter
+│   ├── core/             # Document, Relationship
 │   └── stores/           # VectorStore, GraphStore, BM25Store, HybridStore
 └── tests/
 ```
-
----
-
-## Tests
-
-```bash
-pip install -r requirements.txt
-pytest tests/ -v
-```
-
-With coverage (if `pytest-cov` is installed):
-
-```bash
-pytest tests/ --cov=src --cov-report=term-missing
-```
-
----
-
-## Status
-
-In development. Implemented: Python stdlib adapter, vector/graph/BM25/hybrid stores, CLI (query, index, info).
