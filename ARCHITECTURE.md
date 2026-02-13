@@ -11,14 +11,14 @@ Raw data  →  Adapter  →  Documents  →  Store(s)  →  Query  →  Ranked D
 ## Component diagram
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph Inputs
-        A[Raw data\nJSON, APIs]
+        A[Raw data]
     end
 
     subgraph Core
         B[DataAdapter]
-        C[Document\n+ Relationship]
+        C[Document + Relationship]
     end
 
     subgraph Stores
@@ -38,7 +38,7 @@ flowchart LR
     C --> E
     C --> F
     C --> G
-    E -.->|query routing| H
+    E --> H
     G --> D
     G --> E
     G --> F
@@ -58,15 +58,16 @@ flowchart LR
 
 ## Stores
 
-All stores implement **MemoryStore**.
+**MemoryStore** - Abstract base class that provides the `index`, `query`, `clear`, and `size` interface for store implementations. Ensures a consistent retrieval API across all backends.
 
-| Store           | Strategy                    | Best for                         |
-| --------------- | --------------------------- | -------------------------------- |
-| **VectorStore** | Embeddings + cosine         | Semantic / conceptual similarity |
-| **GraphStore**  | NetworkX + keywords         | "What does X call?" / structure  |
-| **BM25Store**   | BM25 over text              | Strong keyword overlap           |
-| **HybridStore** | Weighted RRF over all three | General / mixed queries          |
+**VectorStore** - ChromaDB Embeddings and cosine similarity. Best for semantic or conceptual queries.
+
+**GraphStore** - NetworkX graph plus keyword index. Best for structural queries (e.g. "what does X call?", inheritance).
+
+**BM25Store** - BM25 over text. Best for strong keyword overlap.
+
+**HybridStore** - Weighted Reciprocal Rank Fusion (RRF) over vector, graph, and BM25 results. Best for general or mixed queries.
 
 ## Classifiers
 
-**Structural intent** - small classifier (baked-in examples, LogisticRegression) that maps a query to `(is_structural, edge_type, use_successors)`. Used by GraphStore to decide whether to do graph expansion and which edge type/direction. If sklearn is missing, the graph store falls back to keyword-based pattern matching.
+**StructuralIntentClassifier** - small classifier that evaluates if a query contains structural language. Used by GraphStore to determine when to use graph expansion and what type of edges should be used.
