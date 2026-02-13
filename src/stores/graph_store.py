@@ -1,9 +1,19 @@
 """Graph store using NetworkX for relationship-based retrieval."""
 
+import re
 import networkx as nx
 from typing import Any, Optional
 from .base import MemoryStore
 from src.core import Document, Relationship
+from src.classifiers import classify_structural_intent
+
+# Fallback when sklearn classifier not available (keywords, edge_type, use_successors)
+STRUCTURAL_PATTERNS = [
+    (["what functions call", "callers of", "who calls"], "calls", False),
+    (["what does", "call", "calls", "invoke", "internally"], "calls", True),
+    (["inherit", "inherits", "subclass", "base class", "parent class"], "base_class", True),
+    (["depend", "depends", "use", "import"], None, True),
+]
 
 
 class GraphStore(MemoryStore):
@@ -46,29 +56,38 @@ class GraphStore(MemoryStore):
     def query(self, query_text: str, n_results: int = 5) -> list[Document]:
         """
         Query graph using multiple strategies.
-        
-        Strategies:
-        1. Exact ID match (highest priority)
-        2. Content/keyword match
-        3. Related nodes (via edges)
-        
-        Args:
-            query_text: Search query
-            n_results: Max results to return
-            
-        Returns:
-            List of Document objects, ranked by relevance
-        """
-        results = []
-        seen_ids = set()
-        
-        # Strategy 1: Exact ID match
-        exact = self._find_by_id(query_text)
-        if exact:
-            results.append(exact)
-            seen_ids.add(exact.id)
 
-        # Strategy 2: Keyword search (scored by word matches)
+        For structural queries (e.g. "what does X call?", "what does X inherit from?"),
+        prioritizes graph neighbors of the resolved subject. Otherwise: exact ID,
+        keyword match, then neighbor expansion.
+        """
+        results: list[Document] = []
+        seen_ids: set[str] = set()
+
+        intent = classify_structural_intent(query_text)
+        if intent is None:
+            intent = self._detect_structural_intent(query_text)
+        is_structural, edge_type, use_successors = intent
+
+        if is_structural:
+            seeds = self._resolve_structural_seeds(query_text, limit=5)
+            if seeds:
+                structural_docs = self._get_structural_neighbors(
+                    seeds, edge_type=edge_type, limit=n_results, use_successors=use_successors
+                )
+                for doc in structural_docs:
+                    if doc.id not in seen_ids:
+                        results.append(doc)
+                        seen_ids.add(doc.id)
+
+        # Exact ID match (if not already in results)
+        if len(results) < n_results:
+            exact = self._find_by_id(query_text)
+            if exact and exact.id not in seen_ids:
+                results.append(exact)
+                seen_ids.add(exact.id)
+
+        # Keyword search to fill remaining slots
         if len(results) < n_results:
             keyword_matches = self._find_by_keyword(query_text, limit=n_results * 2)
             for doc in keyword_matches:
@@ -78,9 +97,9 @@ class GraphStore(MemoryStore):
                     if len(results) >= n_results:
                         break
 
-        # Strategy 3: Expand to neighbors of top matches
+        # Expand to neighbors of top matches
         if len(results) < n_results:
-            for match in results.copy():
+            for match in list(results):
                 neighbors = self.get_neighbors(match.id)
                 for neighbor in neighbors:
                     if neighbor.id not in seen_ids:
@@ -88,10 +107,9 @@ class GraphStore(MemoryStore):
                         seen_ids.add(neighbor.id)
                         if len(results) >= n_results:
                             break
-                
                 if len(results) >= n_results:
                     break
-        
+
         return results[:n_results]
     
     def clear(self) -> None:
@@ -184,3 +202,68 @@ class GraphStore(MemoryStore):
             neighbors.append(self.graph.nodes[neighbor_id]['document'])
         
         return neighbors
+
+    def get_predecessors(self, node_id: str, edge_type: Optional[str] = None) -> list[Document]:
+        """Get nodes that have an edge to this node (e.g. callers of this function)."""
+        if node_id not in self.graph:
+            return []
+        neighbors = []
+        for pred_id in self.graph.predecessors(node_id):
+            if edge_type:
+                edge_data = self.graph[pred_id][node_id]
+                if edge_data.get("type") != edge_type:
+                    continue
+            neighbors.append(self.graph.nodes[pred_id]["document"])
+        return neighbors
+
+    def _resolve_structural_seeds(self, query_text: str, limit: int = 5) -> list[str]:
+        """Resolve seed node IDs for structural queries: dotted names + top keyword hits."""
+        seeds: list[str] = []
+        # Try dotted identifiers (e.g. "json.load", "pathlib.Path") as exact IDs
+        for prefix in ("stdlib.", ""):
+            for match in re.finditer(r"\b([a-zA-Z_]+\.[a-zA-Z_.]+)\b", query_text):
+                candidate = (prefix + match.group(1)) if prefix else ("stdlib." + match.group(1))
+                if candidate not in seeds and self._find_by_id(candidate):
+                    seeds.append(candidate)
+                    if len(seeds) >= limit:
+                        return seeds
+        # Fall back to top keyword matches
+        keyword_matches = self._find_by_keyword(query_text, limit=limit)
+        for doc in keyword_matches:
+            if doc.id not in seeds and doc.id in self.graph:
+                seeds.append(doc.id)
+                if len(seeds) >= limit:
+                    break
+        return seeds
+
+    def _detect_structural_intent(
+        self, query_text: str
+    ) -> tuple[bool, Optional[str], bool]:
+        """Return (is_structural, edge_type_or_none, use_successors)."""
+        q = query_text.lower()
+        for keywords, edge_type, use_successors in STRUCTURAL_PATTERNS:
+            if any(kw in q for kw in keywords):
+                return True, edge_type, use_successors
+        return False, None, True
+
+    def _get_structural_neighbors(
+        self,
+        seed_ids: list[str],
+        edge_type: Optional[str] = None,
+        limit: int = 5,
+        use_successors: bool = True,
+    ) -> list[Document]:
+        """Return neighbor docs from all seeds (successors or predecessors), deduped."""
+        seen: set[str] = set()
+        out: list[Document] = []
+        for nid in seed_ids:
+            docs = (
+                self.get_neighbors(nid, edge_type=edge_type)
+                if use_successors
+                else self.get_predecessors(nid, edge_type=edge_type)
+            )
+            for doc in docs:
+                if doc.id not in seen:
+                    seen.add(doc.id)
+                    out.append(doc)
+        return out[:limit]

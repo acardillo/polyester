@@ -1,0 +1,186 @@
+{
+  "metadata": {
+    "dataset": "python_stdlib",
+    "data_source": "data/python_docs.json",
+    "total_queries": 20,
+    "categories": {
+      "semantic": 12,
+      "keyword": 5,
+      "structural": 3
+    }
+  },
+  "queries": [
+    {
+      "id": "query-01",
+      "query": "How do I parse JSON from a string?",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.json.loads"],
+      "notes": "Natural language question - vector should excel with semantic understanding"
+    },
+    {
+      "id": "query-02",
+      "query": "Serialize Python object to JSON",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.json.dumps", "stdlib.json.dump"],
+      "notes": "Conceptual search without exact function names"
+    },
+    {
+      "id": "query-03",
+      "query": "Read JSON from file",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.json.load", "stdlib.json.loads"],
+      "notes": "Task-based query"
+    },
+    {
+      "id": "query-04",
+      "query": "What does json.load call internally?",
+      "category": "structural",
+      "expected_best_store": "graph",
+      "relevant_ids": ["stdlib.json.loads"],
+      "notes": "Function call chain - pure graph traversal problem"
+    },
+    {
+      "id": "query-05",
+      "query": "Work with file paths and directories",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.pathlib.Path", "stdlib.pathlib.PurePath"],
+      "notes": "General concept without specific terms"
+    },
+    {
+      "id": "query-06",
+      "query": "What classes does pathlib.Path inherit from?",
+      "category": "structural",
+      "expected_best_store": "graph",
+      "relevant_ids": ["stdlib.pathlib.PurePath"],
+      "notes": "Direct base class only (graph has Path → PurePath)"
+    },
+    {
+      "id": "query-08",
+      "query": "Regular expression match and search",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.re.match", "stdlib.re.search", "stdlib.re.compile"],
+      "notes": "Conceptual query about regex functionality"
+    },
+    {
+      "id": "query-09",
+      "query": "compile regular expression pattern",
+      "category": "keyword",
+      "expected_best_store": "hybrid",
+      "relevant_ids": ["stdlib.re.compile"],
+      "notes": "Terms from doc content - BM25/keyword match without dotted name"
+    },
+    {
+      "id": "query-10",
+      "query": "Split string by regex pattern",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.re.split", "stdlib.re.sub"],
+      "notes": "Task description without exact terms"
+    },
+    {
+      "id": "query-11",
+      "query": "Read and write CSV files",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.csv.DictReader"],
+      "notes": "High-level task query"
+    },
+    {
+      "id": "query-14",
+      "query": "Default dictionary with default value",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.collections.Counter"],
+      "notes": "Conceptual description of functionality"
+    },
+    {
+      "id": "query-16",
+      "query": "Partial function application",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.functools.wraps"],
+      "notes": "Functional programming concept"
+    },
+    {
+      "id": "query-19",
+      "query": "encode bytes Base64",
+      "category": "keyword",
+      "expected_best_store": "hybrid",
+      "relevant_ids": ["stdlib.base64.b64encode"],
+      "notes": "Terms from doc content - BM25/keyword match"
+    },
+    {
+      "id": "query-20",
+      "query": "Encode and decode base64",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": [
+        "stdlib.base64.b64encode",
+        "stdlib.base64.b64decode",
+        "stdlib.base64.standard_b64encode"
+      ],
+      "notes": "Task-based query"
+    },
+    {
+      "id": "query-22",
+      "query": "What functions call json.loads?",
+      "category": "structural",
+      "expected_best_store": "graph",
+      "relevant_ids": ["stdlib.json.load"],
+      "notes": "Reverse call graph - callers of json.loads"
+    },
+    {
+      "id": "query-23",
+      "query": "Thread-safe queue",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": [
+        "stdlib.queue.Queue",
+        "stdlib.queue.LifoQueue",
+        "stdlib.queue.PriorityQueue"
+      ],
+      "notes": "Conceptual threading query"
+    },
+    {
+      "id": "query-24",
+      "query": "Abstract base class and metaclass",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.abc.ABC", "stdlib.abc.ABCMeta", "stdlib.abc.abstractmethod"],
+      "notes": "OOP concept query"
+    },
+    {
+      "id": "query-26",
+      "query": "Deep copy and shallow copy",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": ["stdlib.copy.copy", "stdlib.copy.deepcopy"],
+      "notes": "Conceptual query about copy semantics"
+    },
+    {
+      "id": "query-27",
+      "query": "least recently used cache decorator",
+      "category": "keyword",
+      "expected_best_store": "hybrid",
+      "relevant_ids": ["stdlib.functools.lru_cache"],
+      "notes": "Terms from doc content - BM25/keyword match"
+    },
+    {
+      "id": "query-28",
+      "query": "Context manager and with statement",
+      "category": "semantic",
+      "expected_best_store": "vector",
+      "relevant_ids": [
+        "stdlib.contextlib.contextmanager",
+        "stdlib.contextlib.ExitStack",
+        "stdlib.contextlib.closing"
+      ],
+      "notes": "Natural language about context managers"
+    }
+  ]
+}
