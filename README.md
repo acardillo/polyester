@@ -1,6 +1,6 @@
 # Polyester
 
-[![CI](https://github.com/anthonycardillo/polyester/actions/workflows/ci.yml/badge.svg)](https://github.com/anthonycardillo/polyester/actions/workflows/ci.yml)
+[![CI](https://github.com/acardillo/polyester/actions/workflows/ci.yml/badge.svg)](https://github.com/acardillo/polyester/actions/workflows/ci.yml)
 
 **Polystore AI Retrieval System** — A comparative study of AI memory architectures: vector, graph, BM25, and hybrid retrieval over structured documentation (e.g. Python stdlib).
 
@@ -63,7 +63,7 @@ Each store implements the same interface (`index`, `query`, `clear`, `size`) but
 
 **Semantic search.** Documents and queries are turned into embeddings using ChromaDB's sentence Transformers. Cosine similiarity between vectors is used for ranking.
 
-This store is best used when the query is conceptually differs semantically from the docs. For example, “parse JSON” could match “deserialize a JSON string”
+This store is best used when the query conceptually differs semantically from the docs. For example, “parse JSON” could match “deserialize a JSON string”
 
 ### Graph store
 
