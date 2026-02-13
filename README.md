@@ -1,5 +1,7 @@
 # Polyester
 
+[![CI](https://github.com/anthonycardillo/polyester/actions/workflows/ci.yml/badge.svg)](https://github.com/anthonycardillo/polyester/actions/workflows/ci.yml)
+
 **Polystore AI Retrieval System** — A comparative study of AI memory architectures: vector, graph, BM25, and hybrid retrieval over structured documentation (e.g. Python stdlib).
 
 ## Prerequisites
@@ -61,7 +63,7 @@ Each store implements the same interface (`index`, `query`, `clear`, `size`) but
 
 **Semantic search.** Documents and queries are turned into embeddings using ChromaDB's sentence Transformers. Cosine similiarity between vectors is used for ranking.
 
-This store is best used when the query is conceptual differs semantically from the docs. For example, “parse JSON” could match “deserialize a JSON string”
+This store is best used when the query is conceptually differs semantically from the docs. For example, “parse JSON” could match “deserialize a JSON string”
 
 ### Graph store
 
@@ -98,6 +100,23 @@ To run the Polyester CLI: `python polyester.py <command> [options]`
 | `store` | `s`   | `vector` &#124; `graph` &#124; `bm25` &#124; `hybrid` | `vector`                | Store type                     |
 | `data`  | `d`   | File Path                                             | `data/python_docs.json` | Path to JSON data              |
 | `top-k` | `k`   | Integer                                               | `5`                     | Number of results (query only) |
+
+## Development
+
+From the project root with your venv activated:
+
+```bash
+# Run tests
+pytest
+
+# Lint
+ruff check .
+
+# Format
+black .
+```
+
+CI runs tests, Ruff, and Black on push and pull requests to `main`.
 
 ## Project Structure
 
