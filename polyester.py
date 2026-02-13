@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.table import Table
 
 from src.adapters import PythonDocsAdapter
-from src.stores import BM25Store, GraphStore, HybridStore, VectorStore
+from src.stores import BM25Store, GraphStore, HybridStore, MemoryStore, VectorStore
 
 # Suppress ALL non-critical warnings
 warnings.filterwarnings("ignore")
@@ -149,7 +149,7 @@ def info(
     console.print(table)
 
 
-def create_store(store_type: str):
+def create_store(store_type: str) -> MemoryStore:
     """Factory function to create store by type."""
     if store_type == "vector":
         return VectorStore(collection_name="python_docs_cli")
@@ -161,7 +161,7 @@ def create_store(store_type: str):
         return HybridStore(collection_name="python_docs_cli")
     else:
         console.print(f"[red]Error: Store type '{store_type}' not implemented[/red]")
-        console.print("[yellow]Available: vector, graph[/yellow]")
+        console.print("[yellow]Available: vector, graph, bm25, hybrid[/yellow]")
         raise typer.Exit(code=1)
 
 
