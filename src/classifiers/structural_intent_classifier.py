@@ -5,7 +5,6 @@ examples and trains at first use (optionally cached to disk).
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Optional, Tuple
 
 # Baked-in training data: (query, label). Labels map to (edge_type, use_successors).
@@ -34,21 +33,30 @@ STRUCTURAL_INTENT_EXAMPLES = [
     ("What does json.load call internally?", "structural_successors_calls"),
     ("What does json.load call?", "structural_successors_calls"),
     ("Which function does json.load invoke?", "structural_successors_calls"),
-    ("What does the JSON function that deserializes a file-like object call internally?", "structural_successors_calls"),
+    (
+        "What does the JSON function that deserializes a file-like object call internally?",
+        "structural_successors_calls",
+    ),
     ("What does X call?", "structural_successors_calls"),
     ("What does pathlib.Path call?", "structural_successors_calls"),
     # structural: what calls X? (predecessors, calls)
     ("What functions call json.loads?", "structural_predecessors_calls"),
     ("What calls json.loads?", "structural_predecessors_calls"),
     ("Who calls json.loads?", "structural_predecessors_calls"),
-    ("Which function calls the one that deserializes a string containing a JSON document?", "structural_predecessors_calls"),
+    (
+        "Which function calls the one that deserializes a string containing a JSON document?",
+        "structural_predecessors_calls",
+    ),
     ("What functions call this?", "structural_predecessors_calls"),
     ("Callers of json.loads", "structural_predecessors_calls"),
     # structural: inheritance (successors, base_class)
     ("What classes does pathlib.Path inherit from?", "structural_successors_base_class"),
     ("What does Path inherit from?", "structural_successors_base_class"),
     ("What is the base class of pathlib.Path?", "structural_successors_base_class"),
-    ("What is the base class of the pathlib class that can make system calls on path objects?", "structural_successors_base_class"),
+    (
+        "What is the base class of the pathlib class that can make system calls on path objects?",
+        "structural_successors_base_class",
+    ),
     ("What does pathlib.Path inherit from?", "structural_successors_base_class"),
 ]
 
@@ -83,8 +91,8 @@ class _StructuralIntentClassifier:
 
     def _fit(self) -> None:
         try:
-            from sklearn.linear_model import LogisticRegression
             from sklearn.feature_extraction.text import TfidfVectorizer
+            from sklearn.linear_model import LogisticRegression
         except ImportError:
             return
         queries = [q for q, _ in STRUCTURAL_INTENT_EXAMPLES]
@@ -96,13 +104,13 @@ class _StructuralIntentClassifier:
             strip_accents="unicode",
             lowercase=True,
         )
-        X = self._vectorizer.fit_transform(queries)
+        x = self._vectorizer.fit_transform(queries)
         self._model = LogisticRegression(max_iter=500, random_state=42)
-        self._model.fit(X, labels)
+        self._model.fit(x, labels)
 
     def predict(self, query_text: str) -> Optional[Tuple[bool, Optional[str], bool]]:
         if self._model is None or self._vectorizer is None:
             return None
-        X = self._vectorizer.transform([query_text])
-        label = self._model.predict(X)[0]
+        x = self._vectorizer.transform([query_text])
+        label = self._model.predict(x)[0]
         return LABEL_TO_INTENT[label]

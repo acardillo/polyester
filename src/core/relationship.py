@@ -1,10 +1,12 @@
 from typing import Any
-from pydantic import ConfigDict, BaseModel, Field, model_validator
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
 
 class Relationship(BaseModel):
     """
     Represents a directed connection between two documents.
-    
+
     Example:
         Relationship(
             source_id="stdlib.json.load",
@@ -21,8 +23,8 @@ class Relationship(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    @model_validator(mode='after')
-    def validate_no_self_loop(self) -> 'Relationship':
+    @model_validator(mode="after")
+    def validate_no_self_loop(self) -> "Relationship":
         if self.source_id == self.target_id:
             raise ValueError("Source and target IDs cannot be the same (self-loop detected)")
         return self

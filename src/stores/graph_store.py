@@ -1,11 +1,14 @@
 """Graph store using NetworkX for relationship-based retrieval."""
 
 import re
+from typing import Optional
+
 import networkx as nx
-from typing import Any, Optional
-from .base import MemoryStore
-from src.core import Document, Relationship
+
 from src.classifiers import classify_structural_intent
+from src.core import Document, Relationship
+
+from .base import MemoryStore
 
 # Fallback when sklearn classifier not available (keywords, edge_type, use_successors)
 STRUCTURAL_PATTERNS = [
@@ -19,25 +22,25 @@ STRUCTURAL_PATTERNS = [
 class GraphStore(MemoryStore):
     """
     Graph store using NetworkX for relationship traversal.
-    
+
     Documents become nodes, relationships become edges.
     Excels at queries involving connections between documents.
     """
-    
+
     def __init__(self):
         """
         Initialize graph store with directed graph.
-        
+
         Args:
             **kwargs: Additional configuration (unused currently)
         """
         self.graph = nx.DiGraph()
         self.inverted_index = {}
-    
+
     def index(self, documents: list[Document]) -> None:
         """
         Index documents as graph nodes with relationship edges.
-        
+
         Args:
             documents: List of Document objects to index
         """
@@ -52,7 +55,6 @@ class GraphStore(MemoryStore):
         for doc in documents:
             self._add_edges(doc.relationships)
 
-    
     def query(self, query_text: str, n_results: int = 5) -> list[Document]:
         """
         Query graph using multiple strategies.
@@ -111,25 +113,19 @@ class GraphStore(MemoryStore):
                     break
 
         return results[:n_results]
-    
+
     def clear(self) -> None:
         """Clear all nodes and edges from graph."""
         self.graph.clear()
         self.inverted_index = {}
-    
+
     def size(self) -> int:
         """Return number of nodes in graph."""
         return self.graph.number_of_nodes()
 
     def _add_node(self, doc: Document) -> None:
         """Add a single document as graph node."""
-        self.graph.add_node(
-            doc.id,
-            content=doc.content,
-            metadata=doc.metadata,
-            document=doc
-        )
-
+        self.graph.add_node(doc.id, content=doc.content, metadata=doc.metadata, document=doc)
 
     def _add_edges(self, relationships: list[Relationship]) -> None:
         """Add edges for all relationships of a document."""
@@ -138,9 +134,9 @@ class GraphStore(MemoryStore):
                 self.graph.add_edge(
                     relationship.source_id,
                     relationship.target_id,
-                    type=relationship.relationship_type
+                    type=relationship.relationship_type,
                 )
-    
+
     def _index_document(self, doc: Document) -> None:
         """Add document to inverted index."""
         words = doc.content.lower().split()
@@ -149,58 +145,57 @@ class GraphStore(MemoryStore):
                 self.inverted_index[word] = set()
             self.inverted_index[word].add(doc.id)
 
-    
     def _find_by_id(self, node_id: str) -> Optional[Document]:
         """Find document by exact ID."""
         if node_id in self.graph:
-            return self.graph.nodes[node_id]['document']
+            return self.graph.nodes[node_id]["document"]
         return None
-    
+
     def _find_by_keyword(self, keyword: str, limit: int = 10) -> list[Document]:
         """Find documents using inverted index with scoring."""
         keyword_lower = keyword.lower()
         query_words = keyword_lower.split()
-        
-        doc_scores = {} 
-        
+
+        doc_scores = {}
+
         for word in query_words:
             if word in self.inverted_index:
                 for doc_id in self.inverted_index[word]:
                     doc_scores[doc_id] = doc_scores.get(doc_id, 0) + 1
-        
+
         sorted_ids = sorted(doc_scores.keys(), key=lambda x: doc_scores[x], reverse=True)
-        
+
         results = []
         for doc_id in sorted_ids[:limit]:
             if doc_id in self.graph:
-                results.append(self.graph.nodes[doc_id]['document'])
-        
+                results.append(self.graph.nodes[doc_id]["document"])
+
         return results
-    
+
     def get_neighbors(self, node_id: str, edge_type: Optional[str] = None) -> list[Document]:
         """
         Get neighboring documents connected by edges.
-        
+
         Args:
             node_id: ID of source node
             edge_type: Optional filter by relationship type (e.g., "calls", "inherits")
-            
+
         Returns:
             List of connected Documents
         """
         if node_id not in self.graph:
             return []
-        
+
         neighbors = []
         for neighbor_id in self.graph.successors(node_id):
             # Filter by edge type if specified
             if edge_type:
                 edge_data = self.graph[node_id][neighbor_id]
-                if edge_data.get('type') != edge_type:
+                if edge_data.get("type") != edge_type:
                     continue
-            
-            neighbors.append(self.graph.nodes[neighbor_id]['document'])
-        
+
+            neighbors.append(self.graph.nodes[neighbor_id]["document"])
+
         return neighbors
 
     def get_predecessors(self, node_id: str, edge_type: Optional[str] = None) -> list[Document]:
@@ -236,9 +231,7 @@ class GraphStore(MemoryStore):
                     break
         return seeds
 
-    def _detect_structural_intent(
-        self, query_text: str
-    ) -> tuple[bool, Optional[str], bool]:
+    def _detect_structural_intent(self, query_text: str) -> tuple[bool, Optional[str], bool]:
         """Return (is_structural, edge_type_or_none, use_successors)."""
         q = query_text.lower()
         for keywords, edge_type, use_successors in STRUCTURAL_PATTERNS:

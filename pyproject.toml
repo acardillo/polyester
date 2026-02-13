@@ -1,0 +1,28 @@
+[project]
+name = "polyester"
+version = "0.1.0"
+description = "Polystore AI retrieval system — vector, graph, BM25, and hybrid"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(\.git|\.venv|venv|__pycache__)
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [".git", ".venv", "venv", "__pycache__", "*.egg-info"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]  # line too long — Black handles this
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v"

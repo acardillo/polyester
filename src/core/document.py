@@ -1,11 +1,14 @@
 from typing import Any, Optional
-from pydantic import ConfigDict, BaseModel, Field, field_validator
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from .relationship import Relationship
+
 
 class Document(BaseModel):
     """
     Universal representation of a retrievable information unit.
-    
+
     Example:
         Document(
             id="stdlib.json.load",
@@ -31,12 +34,11 @@ class Document(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    @field_validator('embedding')
-    def validate_embedding(cls, v: Optional[list[float]]):
+    @field_validator("embedding")
+    def validate_embedding(cls, v: Optional[list[float]]):  # noqa: N805
         if v is not None:
             if len(v) == 0:
                 raise ValueError("Embedding cannot be an empty list")
             if not all(isinstance(elem, float) for elem in v):
                 raise ValueError("Embedding elements must be float")
         return v
-    

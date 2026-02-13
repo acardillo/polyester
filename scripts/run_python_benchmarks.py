@@ -2,17 +2,20 @@
 """
 Run benchmarks across all stores and generate report.
 """
+
 from __future__ import annotations
 
 import json
+import logging
 import os
-import sys
 import time
 import warnings
-import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from src.adapters import PythonDocsAdapter
+from src.stores import BM25Store, GraphStore, HybridStore, VectorStore
 
 # Suppress non-critical warnings and HF Hub noise (must be before store imports)
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -28,9 +31,6 @@ logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 warnings.filterwarnings("ignore")
 warnings.filterwarnings("ignore", message=".*unauthenticated.*")
 
-from src.adapters import PythonDocsAdapter
-from src.stores import VectorStore, GraphStore, BM25Store, HybridStore
-
 DATA_PATH = Path("data/python_docs.json")
 BENCHMARKS_PATH = Path("data/python_benchmarks.json")
 
@@ -38,6 +38,7 @@ BENCHMARKS_PATH = Path("data/python_benchmarks.json")
 @dataclass
 class QueryResult:
     """Result of one query against one store."""
+
     query_id: str
     store_name: str
     retrieval_time_ms: float
@@ -51,6 +52,7 @@ class QueryResult:
 @dataclass
 class StoreMetrics:
     """Aggregate metrics for one store."""
+
     store_name: str
     avg_retrieval_time_ms: float = 0.0
     median_retrieval_time_ms: float = 0.0
@@ -88,7 +90,9 @@ def run_one_query(store, query_text: str, relevant_ids: list[str]) -> tuple[list
     return retrieved_ids, elapsed_ms
 
 
-def compute_precision_recall(retrieved_ids: list[str], relevant_ids: list[str]) -> tuple[float, float, int]:
+def compute_precision_recall(
+    retrieved_ids: list[str], relevant_ids: list[str]
+) -> tuple[float, float, int]:
     """Compute precision@k, recall@k, and hit count."""
     retrieved_set = set(retrieved_ids[:5])
     relevant_set = set(relevant_ids)
@@ -193,7 +197,9 @@ def generate_comparison_report(
     # Fastest = lowest avg retrieval time
     fastest = min(metrics_by_store.keys(), key=lambda s: metrics_by_store[s].avg_retrieval_time_ms)
     # Most accurate = highest avg precision@5
-    most_accurate = max(metrics_by_store.keys(), key=lambda s: metrics_by_store[s].avg_precision_at_5)
+    most_accurate = max(
+        metrics_by_store.keys(), key=lambda s: metrics_by_store[s].avg_precision_at_5
+    )
 
     # Per-query winner (which store had best precision for that query)
     query_id_to_category = {q["id"]: q.get("category", "semantic") for q in queries}
@@ -340,12 +346,20 @@ def main() -> None:
     for store_name in stores:
         m = metrics_by_store[store_name]
         print(f"\n{store_name.upper()} STORE:")
-        print(f"  Speed:     {m.avg_retrieval_time_ms:.2f}ms avg, {m.median_retrieval_time_ms:.2f}ms median")
+        print(
+            f"  Speed:     {m.avg_retrieval_time_ms:.2f}ms avg, {m.median_retrieval_time_ms:.2f}ms median"
+        )
         print(f"  Accuracy:  {m.avg_precision_at_5:.2%} precision, {m.avg_recall_at_5:.2%} recall")
         print("  By Category:")
-        print(f"    Semantic:    {m.semantic_precision:.2%} precision, {m.semantic_recall:.2%} recall, {m.semantic_avg_time_ms:.2f}ms")
-        print(f"    Keyword:     {m.keyword_precision:.2%} precision, {m.keyword_recall:.2%} recall, {m.keyword_avg_time_ms:.2f}ms")
-        print(f"    Structural:  {m.structural_precision:.2%} precision, {m.structural_recall:.2%} recall, {m.structural_avg_time_ms:.2f}ms")
+        print(
+            f"    Semantic:    {m.semantic_precision:.2%} precision, {m.semantic_recall:.2%} recall, {m.semantic_avg_time_ms:.2f}ms"
+        )
+        print(
+            f"    Keyword:     {m.keyword_precision:.2%} precision, {m.keyword_recall:.2%} recall, {m.keyword_avg_time_ms:.2f}ms"
+        )
+        print(
+            f"    Structural:  {m.structural_precision:.2%} precision, {m.structural_recall:.2%} recall, {m.structural_avg_time_ms:.2f}ms"
+        )
 
     report = generate_comparison_report(metrics_by_store, results_by_store, queries)
 
