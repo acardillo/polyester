@@ -13,13 +13,6 @@ This is an AI engineering project comparing vector, graph, and hybrid retrieval 
 - Use Pydantic for all data models
 - Abstract base classes for extensibility
 
-## Architecture Patterns
-
-- DataAdapter: transforms raw data → Documents (swappable domains)
-- MemoryStore: storage/retrieval backend (swappable implementations)
-- Query engine orchestrates adapter + store
-- Config-driven (YAML files for different setups)
-
 ## Work Style
 
 - Explain BEFORE showing code
@@ -29,7 +22,3 @@ This is an AI engineering project comparing vector, graph, and hybrid retrieval 
 - Review and suggest improvements
 - Review my code, don't rewrite it unless I ask
 - Before moving on to the next task, verify changes are commited
-
-## Current Phase
-
-Check commit history or ask me where we are in the plan.
