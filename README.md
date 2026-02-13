@@ -61,9 +61,9 @@ Each store implements the same interface (`index`, `query`, `clear`, `size`) but
 
 ### Vector store
 
-**Semantic search.** Documents and queries are turned into embeddings using ChromaDB's sentence Transformers. Cosine similiarity between vectors is used for ranking.
+**Semantic search.** Documents and queries are turned into embeddings using ChromaDB's sentence Transformers. Cosine similarity between vectors is used for ranking.
 
-This store is best used when the query conceptually differs semantically from the docs. For example, “parse JSON” could match “deserialize a JSON string”
+This store is best used when the query differs semantically from the docs. For example, “parse JSON” could match “deserialize a JSON string”
 
 ### Graph store
 
